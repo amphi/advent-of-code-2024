@@ -21,55 +21,6 @@ fn parse_line_1(line: &str) -> Vec<(i32, i32)> {
         .collect()
 }
 
-fn parse_line_2(line: &str) -> Vec<(i32, i32)> {
-    let do_re = Regex::new(r"do\(\)").unwrap();
-    let dont_re = Regex::new(r"don't\(\)").unwrap();
-
-    fn get_positions(re: &Regex, line: &str) -> Vec<usize> {
-        re.captures_iter(line)
-            .map(|c| c.get(0).unwrap().start())
-            .collect()
-    }
-
-    fn find_greater(val: usize, vec: &[usize]) -> Option<usize> {
-        vec.to_vec()
-            .into_iter()
-            .filter(|v| *v > val)
-            .collect::<Vec<usize>>()
-            .get(0)
-            .copied()
-    }
-
-    let do_pos: Vec<usize> = get_positions(&do_re, line);
-    let dont_pos: Vec<usize> = get_positions(&dont_re, line);
-
-    let mut results: Vec<(usize, usize)> = Vec::new();
-    let mut last_do: usize = 0;
-
-    loop {
-        let last_dont: usize;
-        if let Some(new_dont) = find_greater(last_do, &dont_pos) {
-            last_dont = new_dont;
-            results.push((last_do, last_dont));
-        } else {
-            results.push((last_do, line.len() - 1));
-            break;
-        }
-
-        if let Some(new_do) = find_greater(last_dont, &do_pos) {
-            last_do = new_do;
-        } else {
-            break;
-        }
-    }
-
-    results
-        .into_iter()
-        .map(|(start, end)| parse_line_1(&line[start..end]))
-        .flatten()
-        .collect()
-}
-
 /// Solve day 3 of Advent of Code 2024
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -81,23 +32,20 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let input: Vec<String> = read_lines(&args.path)
-        .unwrap()
-        .map(|line| line.unwrap())
-        .collect();
+    let input: Vec<String> = read_lines(&args.path).unwrap().flatten().collect();
 
     let result1: i32 = input
         .clone()
         .into_iter()
-        .map(|line| parse_line_1(&line))
-        .map(|arr| {
-            arr.into_iter()
-                .fold(0, |acc, (fac1, fac2)| acc + (fac1 * fac2))
-        })
-        .sum();
+        .flat_map(|line| parse_line_1(&line))
+        .fold(0, |acc, (fac1, fac2)| acc + (fac1 * fac2));
 
-    let result2: i32 = parse_line_2(&input.join(""))
-        .into_iter()
+    let do_re = Regex::new(r"do\(\)").unwrap();
+    let dont_re = Regex::new(r"don't\(\)").unwrap();
+    let result2: i32 = do_re
+        .split(&input.join(""))
+        .flat_map(|s| dont_re.split(s).next())
+        .flat_map(|s| parse_line_1(&s))
         .fold(0, |acc, (fac1, fac2)| acc + (fac1 * fac2));
 
     println!(
